@@ -1,5 +1,5 @@
 import fs from "fs";
-import { fromSSO } from "@aws-sdk/credential-providers";
+import { fromSSO,fromIni } from "@aws-sdk/credential-providers";
 import * as p from "@clack/prompts";
 import {
   type BuildType,
@@ -53,6 +53,7 @@ export const runInit = async ({
         value: "account",
       },
       { label: "AWS SSO Login", value: "sso" },
+      { label: "Use AWS Profile (from ~/.aws/credentials)", value: "profile" },
     ],
   });
   if (p.isCancel(mode)) process.exit(1);
@@ -91,6 +92,18 @@ export const runInit = async ({
       if (error instanceof ExecaError) {
         p.log.error(error.stdout || error.stderr || error.message);
       }
+      process.exit(1);
+    }
+  } else if (mode === "profile") {
+    const profile = await p.text({
+      message: "Enter the AWS profile name",
+      defaultValue: "default",
+    });
+    if (p.isCancel(profile)) process.exit(1);
+    try {
+      credentials = await fromIni({ profile })();
+    } catch (err) {
+      p.log.error(`Failed to load AWS profile "${profile}". ${err}`);
       process.exit(1);
     }
   } else {
